@@ -426,6 +426,9 @@ class GzipCompressedStream:
           in the gzip file.
     """
 
+    # The maximum size of the data read when checking for trailing padding.
+    _MAXIMUM_PADDING_READ_SIZE = 64 * 1024
+
     def __init__(self):
         """Initializes a file-like object."""
         super().__init__()
@@ -473,6 +476,30 @@ class GzipCompressedStream:
 
         return None
 
+    def _IsZeroPadding(self, file_object, offset, file_size):
+        """Determines if the remaining data in the file only contains 0-byte values.
+
+        Args:
+          file_object (FileIO): file-like object that contains the gzip compressed
+              stream.
+          offset (int): offset of the remaining data in the file-like object.
+          file_size (int): size of the file-like object.
+
+        Returns:
+          bool: True if the remaining data only contains 0-byte values.
+        """
+        file_object.seek(offset, os.SEEK_SET)
+
+        while offset < file_size:
+            read_size = min(file_size - offset, self._MAXIMUM_PADDING_READ_SIZE)
+            data = file_object.read(read_size)
+            if not data or data.count(0) != len(data):
+                return False
+
+            offset += len(data)
+
+        return True
+
     def Open(self, file_object):
         """Opens the file-like object defined by path specification.
 
@@ -491,6 +518,13 @@ class GzipCompressedStream:
         next_member_offset = 0
 
         while next_member_offset < file_size:
+            # Trailing 0-byte values after the last member are considered padding,
+            # which is consistent with the behavior of gunzip.
+            if next_member_offset > 0 and self._IsZeroPadding(
+                file_object, next_member_offset, file_size
+            ):
+                break
+
             member = GzipMember(
                 file_object, next_member_offset, uncompressed_data_offset
             )
