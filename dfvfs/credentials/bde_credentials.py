@@ -4,8 +4,6 @@ from dfvfs.credentials import credentials
 from dfvfs.credentials import manager
 from dfvfs.lib import definitions
 
-# TODO: add means to set the credentials in the bde_volume using the helper?
-
 
 class BDECredentials(credentials.Credentials):
     """BitLocker Drive Encryption (BDE) credentials."""
