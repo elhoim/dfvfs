@@ -85,6 +85,7 @@ class FindSpec:
         self._file_entry_types = file_entry_types
         self._is_allocated = is_allocated
         self._is_case_sensitive = case_sensitive
+        self._compiled_location_segments = None
         self._is_regex = False
         self._location = None
         self._location_regex = None
@@ -96,7 +97,7 @@ class FindSpec:
                 self._location = location
 
             elif isinstance(location, list):
-                self._location_segments = location
+                self._location_segments = list(location)
 
             else:
                 location_type = type(location)
@@ -126,7 +127,7 @@ class FindSpec:
                 self._location_regex = location_regex
 
             elif isinstance(location_regex, list):
-                self._location_segments = location_regex
+                self._location_segments = list(location_regex)
 
             else:
                 location_regex_type = type(location_regex)
@@ -150,6 +151,7 @@ class FindSpec:
             )
 
         if self._location_segments is not None:
+            self._compiled_location_segments = self._CompileLocationSegments()
             self._number_of_location_segments = len(self._location_segments)
 
         # TODO: add support for name
@@ -304,29 +306,13 @@ class FindSpec:
         if segment_index == 0:
             return True
 
-        segment_name = self._location_segments[segment_index - 1]
+        segment_name = self._compiled_location_segments[segment_index - 1]
 
         if self._is_regex:
-            if isinstance(segment_name, str):
-                # Allow '\n' to be matched by '.' and make '\w', '\W', '\b', '\B',
-                # '\d', '\D', '\s' and '\S' Unicode safe.
-                flags = re.DOTALL | re.UNICODE
-                if not self._is_case_sensitive:
-                    flags |= re.IGNORECASE
+            # A location segment with an invalid regular expression never matches.
+            if segment_name is None:
+                return False
 
-                try:
-                    segment_name = re.compile(f"^{segment_name:s}$", flags=flags)
-                except sre_constants.error:
-                    # TODO: set self._location_segments[segment_index - 1] to None ?
-                    return False
-
-                self._location_segments[segment_index - 1] = segment_name
-
-        elif not self._is_case_sensitive:
-            segment_name = segment_name.lower()
-            self._location_segments[segment_index - 1] = segment_name
-
-        if self._is_regex:
             return bool(
                 segment_name.match(location_segment)
             )  # pylint: disable=no-member
@@ -335,6 +321,41 @@ class FindSpec:
             return bool(segment_name == location_segment)
 
         return bool(segment_name == location_segment.lower())
+
+    def _CompileLocationSegments(self):
+        """Compiles the location segments for comparison.
+
+        Regular expression location segments are compiled, where a location
+        segment with an invalid regular expression is represented by None.
+        Location segments of a case insensitive find specification are converted
+        to lower case.
+
+        Returns:
+          list[object]: compiled location segments.
+        """
+        # Allow '\n' to be matched by '.' and make '\w', '\W', '\b', '\B',
+        # '\d', '\D', '\s' and '\S' Unicode safe.
+        flags = re.DOTALL | re.UNICODE
+        if not self._is_case_sensitive:
+            flags |= re.IGNORECASE
+
+        compiled_location_segments = []
+        for location_segment in self._location_segments:
+            if isinstance(location_segment, str):
+                if self._is_regex:
+                    try:
+                        location_segment = re.compile(
+                            f"^{location_segment:s}$", flags=flags
+                        )
+                    except sre_constants.error:
+                        location_segment = None
+
+                elif not self._is_case_sensitive:
+                    location_segment = location_segment.lower()
+
+            compiled_location_segments.append(location_segment)
+
+        return compiled_location_segments
 
     def _ConvertLocationGlob2Regex(self, location_glob):
         """Converts a location glob into a regular expression.
