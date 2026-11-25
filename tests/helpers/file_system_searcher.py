@@ -2,6 +2,7 @@
 """Tests for the file system searcher."""
 
 import os
+import re
 import unittest
 
 from dfvfs.lib import definitions
@@ -288,6 +289,59 @@ class FindSpecTest(shared_test_lib.BaseTestCase):
             location_separator="/",
         )
         result = find_spec._CompareWithLocationSegment("__init__.py", 6)
+        self.assertFalse(result)
+
+    def testCompareWithLocationSegmentPrecompiled(self):
+        """Test the _CompareWithLocationSegment function with precompiled segments."""
+        location_segments = ["Usr", "LIB"]
+        find_spec = file_system_searcher.FindSpec(
+            case_sensitive=False, location=location_segments
+        )
+        self.assertEqual(find_spec._location_segments, ["Usr", "LIB"])
+        self.assertEqual(find_spec._compiled_location_segments, ["usr", "lib"])
+
+        result = find_spec._CompareWithLocationSegment("uSR", 1)
+        self.assertTrue(result)
+
+        result = find_spec._CompareWithLocationSegment("lib", 2)
+        self.assertTrue(result)
+
+        result = find_spec._CompareWithLocationSegment("lib", 1)
+        self.assertFalse(result)
+
+        # The location segments provided by the caller are not changed.
+        self.assertEqual(location_segments, ["Usr", "LIB"])
+        self.assertEqual(find_spec._location_segments, ["Usr", "LIB"])
+
+        location_segments = ["us.", "l[a-z]+"]
+        find_spec = file_system_searcher.FindSpec(
+            case_sensitive=False, location_regex=location_segments
+        )
+        compiled_location_segments = find_spec._compiled_location_segments
+        self.assertEqual(len(compiled_location_segments), 2)
+        self.assertEqual(compiled_location_segments[0].pattern, "^us.$")
+        self.assertTrue(compiled_location_segments[0].flags & re.IGNORECASE)
+
+        result = find_spec._CompareWithLocationSegment("USR", 1)
+        self.assertTrue(result)
+
+        result = find_spec._CompareWithLocationSegment("Lib", 2)
+        self.assertTrue(result)
+
+        result = find_spec._CompareWithLocationSegment("lib64", 2)
+        self.assertFalse(result)
+
+        self.assertEqual(location_segments, ["us.", "l[a-z]+"])
+        self.assertEqual(find_spec._location_segments, ["us.", "l[a-z]+"])
+
+        # An invalid regular expression does not match and does not raise.
+        find_spec = file_system_searcher.FindSpec(location_regex=["usr", "(lib"])
+        self.assertIsNone(find_spec._compiled_location_segments[1])
+
+        result = find_spec._CompareWithLocationSegment("usr", 1)
+        self.assertTrue(result)
+
+        result = find_spec._CompareWithLocationSegment("(lib", 2)
         self.assertFalse(result)
 
     def testConvertLocationGlob2Regex(self):
