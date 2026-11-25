@@ -3,7 +3,8 @@
 
 import unittest
 
-from dfvfs.path import fake_path_spec
+from dfvfs.lib import definitions
+from dfvfs.path import factory as path_spec_factory
 from dfvfs.resolver import context
 from dfvfs.vfs import fake_file_system
 
@@ -16,7 +17,9 @@ class FakeFileSystemTest(shared_test_lib.BaseTestCase):
     def setUp(self):
         """Sets up the needed objects used throughout the test."""
         self._resolver_context = context.Context()
-        self._fake_path_spec = fake_path_spec.FakePathSpec(location="/")
+        self._fake_path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location="/"
+        )
 
     def tearDown(self):
         """Cleans up the needed objects used throughout the test."""
@@ -44,13 +47,15 @@ class FakeFileSystemTest(shared_test_lib.BaseTestCase):
 
         file_system.Open()
 
-        path_spec = fake_path_spec.FakePathSpec(
-            location="/test_data/testdir_fake/file1.txt"
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE,
+            location="/test_data/testdir_fake/file1.txt",
         )
         self.assertTrue(file_system.FileEntryExistsByPathSpec(path_spec))
 
-        path_spec = fake_path_spec.FakePathSpec(
-            location="/test_data/testdir_fake/file6.txt"
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE,
+            location="/test_data/testdir_fake/file6.txt",
         )
         self.assertFalse(file_system.FileEntryExistsByPathSpec(path_spec))
 
@@ -67,16 +72,18 @@ class FakeFileSystemTest(shared_test_lib.BaseTestCase):
 
         file_system.Open()
 
-        path_spec = fake_path_spec.FakePathSpec(
-            location="/test_data/testdir_fake/file1.txt"
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE,
+            location="/test_data/testdir_fake/file1.txt",
         )
         file_entry = file_system.GetFileEntryByPathSpec(path_spec)
 
         self.assertIsNotNone(file_entry)
         self.assertEqual(file_entry.name, "file1.txt")
 
-        path_spec = fake_path_spec.FakePathSpec(
-            location="/test_data/testdir_fake/file6.txt"
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE,
+            location="/test_data/testdir_fake/file6.txt",
         )
         file_entry = file_system.GetFileEntryByPathSpec(path_spec)
 

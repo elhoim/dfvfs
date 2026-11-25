@@ -4,7 +4,7 @@
 import unittest
 
 from dfvfs.lib import definitions
-from dfvfs.path import fake_path_spec
+from dfvfs.path import factory as path_spec_factory
 from dfvfs.resolver import context
 from dfvfs.vfs import fake_file_entry
 from dfvfs.vfs import fake_file_system
@@ -18,7 +18,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
     def setUp(self):
         """Sets up the needed objects used throughout the test."""
         self._resolver_context = context.Context()
-        self._fake_path_spec = fake_path_spec.FakePathSpec(location="/")
+        self._fake_path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location="/"
+        )
         self._file_system = fake_file_system.FakeFileSystem(
             self._resolver_context, self._fake_path_spec
         )
@@ -59,7 +61,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
 
     def testInitialize(self):
         """Test the __init__ function."""
-        path_spec = fake_path_spec.FakePathSpec(location=self._test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=self._test_file
+        )
         file_entry = fake_file_entry.FakeFileEntry(
             self._resolver_context, self._file_system, path_spec
         )
@@ -72,7 +76,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
 
     def testAccessTime(self):
         """Test the access_time property."""
-        path_spec = fake_path_spec.FakePathSpec(location=self._test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=self._test_file
+        )
         file_entry = fake_file_entry.FakeFileEntry(
             self._resolver_context, self._file_system, path_spec
         )
@@ -82,7 +88,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
 
     def testChangeTime(self):
         """Test the change_time property."""
-        path_spec = fake_path_spec.FakePathSpec(location=self._test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=self._test_file
+        )
         file_entry = fake_file_entry.FakeFileEntry(
             self._resolver_context, self._file_system, path_spec
         )
@@ -92,7 +100,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
 
     def testCreationTime(self):
         """Test the creation_time property."""
-        path_spec = fake_path_spec.FakePathSpec(location=self._test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=self._test_file
+        )
         file_entry = fake_file_entry.FakeFileEntry(
             self._resolver_context, self._file_system, path_spec
         )
@@ -102,7 +112,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
 
     def testModificationTime(self):
         """Test the modification_time property."""
-        path_spec = fake_path_spec.FakePathSpec(location=self._test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=self._test_file
+        )
         file_entry = fake_file_entry.FakeFileEntry(
             self._resolver_context, self._file_system, path_spec
         )
@@ -112,7 +124,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
 
     def testName(self):
         """Test the name property."""
-        path_spec = fake_path_spec.FakePathSpec(location=self._test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=self._test_file
+        )
         file_entry = fake_file_entry.FakeFileEntry(
             self._resolver_context, self._file_system, path_spec
         )
@@ -122,7 +136,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
 
     def testSize(self):
         """Test the size property."""
-        path_spec = fake_path_spec.FakePathSpec(location=self._test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=self._test_file
+        )
         file_entry = fake_file_entry.FakeFileEntry(
             self._resolver_context, self._file_system, path_spec
         )
@@ -132,7 +148,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
 
     def testGetFileEntryByPathSpec(self):
         """Test the get a file entry by path specification functionality."""
-        path_spec = fake_path_spec.FakePathSpec(location=self._test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=self._test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
 
         self.assertIsNotNone(file_entry)
@@ -140,7 +158,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
     def testGetFileObject(self):
         """Test the get file object functionality."""
         test_file = "/test_data/testdir_fake/file1.txt"
-        path_spec = fake_path_spec.FakePathSpec(location=test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
         self.assertIsNotNone(file_entry)
 
@@ -156,7 +176,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
     def testGetParentFileEntry(self):
         """Tests the GetParentFileEntry function."""
         test_file = "/test_data/testdir_fake/file1.txt"
-        path_spec = fake_path_spec.FakePathSpec(location=test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
         self.assertIsNotNone(file_entry)
 
@@ -169,7 +191,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
     def testIsFunctions(self):
         """Test the Is* functions."""
         test_file = "/test_data/testdir_fake/file1.txt"
-        path_spec = fake_path_spec.FakePathSpec(location=test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
         self.assertIsNotNone(file_entry)
 
@@ -185,7 +209,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
         self.assertFalse(file_entry.IsSocket())
 
         test_file = "/test_data/testdir_fake"
-        path_spec = fake_path_spec.FakePathSpec(location=test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
         self.assertIsNotNone(file_entry)
 
@@ -201,7 +227,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
         self.assertFalse(file_entry.IsSocket())
 
         test_file = "/test_data/testdir_fake/link1.txt"
-        path_spec = fake_path_spec.FakePathSpec(location=test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
         self.assertIsNotNone(file_entry)
 
@@ -219,7 +247,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
     def testLink(self):
         """Test the link property functionality."""
         test_file = "/test_data/testdir_fake/link1.txt"
-        path_spec = fake_path_spec.FakePathSpec(location=test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
         self.assertIsNotNone(file_entry)
 
@@ -227,7 +257,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
 
     def testSubFileEntries(self):
         """Test the sub file entries iteration functionality."""
-        path_spec = fake_path_spec.FakePathSpec(location=self._test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=self._test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
         self.assertIsNotNone(file_entry)
 
@@ -252,7 +284,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
     def testDataStreams(self):
         """Test the data streams functionality."""
         test_file = "/test_data/testdir_fake/file1.txt"
-        path_spec = fake_path_spec.FakePathSpec(location=test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
         self.assertIsNotNone(file_entry)
 
@@ -265,7 +299,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
         self.assertEqual(data_stream_names, [""])
 
         test_file = "/test_data/testdir_fake"
-        path_spec = fake_path_spec.FakePathSpec(location=test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
         self.assertIsNotNone(file_entry)
 
@@ -278,7 +314,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
         self.assertEqual(data_stream_names, [])
 
         test_file = "/test_data/testdir_fake/link1.txt"
-        path_spec = fake_path_spec.FakePathSpec(location=test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
         self.assertIsNotNone(file_entry)
 
@@ -293,7 +331,9 @@ class FakeFileEntryTest(shared_test_lib.BaseTestCase):
     def testGetDataStream(self):
         """Tests the GetDataStream function."""
         test_file = "/test_data/testdir_fake/file1.txt"
-        path_spec = fake_path_spec.FakePathSpec(location=test_file)
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location=test_file
+        )
         file_entry = self._file_system.GetFileEntryByPathSpec(path_spec)
         self.assertIsNotNone(file_entry)
 
