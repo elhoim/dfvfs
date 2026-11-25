@@ -24,6 +24,38 @@ class TextFileTest(shared_test_lib.BaseTestCase):
         """Sets up the needed objects used throughout the test."""
         self._resolver_context = context.Context()
 
+    def testMaximumReadBufferSize(self):
+        """Test the maximum read buffer size class constant."""
+        self.assertEqual(text_file.TextFile.MAXIMUM_READ_BUFFER_SIZE, 16 * 1024 * 1024)
+
+        # The private name is kept for backwards compatibility.
+        # pylint: disable=protected-access
+        self.assertEqual(
+            text_file.TextFile._MAXIMUM_READ_BUFFER_SIZE,
+            text_file.TextFile.MAXIMUM_READ_BUFFER_SIZE,
+        )
+
+        test_path = self._GetTestFilePath(["another_file"])
+        self._SkipIfPathNotExists(test_path)
+
+        test_os_path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_OS, location=test_path
+        )
+        file_object = resolver.Resolver.OpenFileObject(
+            test_os_path_spec, resolver_context=self._resolver_context
+        )
+
+        try:
+            text_file_object = text_file.TextFile(file_object)
+
+            with self.assertRaises(ValueError):
+                text_file_object.readline(
+                    size=text_file.TextFile.MAXIMUM_READ_BUFFER_SIZE + 1
+                )
+
+        finally:
+            file_object.close()
+
     def testReadline(self):
         """Test the readline() function."""
         test_path = self._GetTestFilePath(["another_file"])
