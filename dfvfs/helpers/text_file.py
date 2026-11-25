@@ -11,7 +11,11 @@ class TextFile:
     """Text file interface for file-like objects."""
 
     # The maximum allowed size of the read buffer.
-    _MAXIMUM_READ_BUFFER_SIZE = 16 * 1024 * 1024
+    MAXIMUM_READ_BUFFER_SIZE = 16 * 1024 * 1024
+
+    # Deprecated alias of MAXIMUM_READ_BUFFER_SIZE kept for backwards
+    # compatibility.
+    _MAXIMUM_READ_BUFFER_SIZE = MAXIMUM_READ_BUFFER_SIZE
 
     def __init__(
         self, file_object, encoding="utf-8", encoding_errors="strict", end_of_line="\n"
@@ -81,12 +85,12 @@ class TextFile:
           UnicodeDecodeError: if a line cannot be decoded and encoding errors is
               set to strict.
           ValueError: if the size is smaller than zero or exceeds the maximum
-              (as defined by _MAXIMUM_READ_BUFFER_SIZE).
+              (as defined by MAXIMUM_READ_BUFFER_SIZE).
         """
         if size is not None and size < 0:
             raise ValueError("Invalid size value smaller than zero.")
 
-        if size is not None and size > self._MAXIMUM_READ_BUFFER_SIZE:
+        if size is not None and size > self.MAXIMUM_READ_BUFFER_SIZE:
             raise ValueError("Invalid size value exceeds maximum.")
 
         if not self._lines:
@@ -95,7 +99,7 @@ class TextFile:
 
             read_size = size
             if not read_size:
-                read_size = self._MAXIMUM_READ_BUFFER_SIZE
+                read_size = self.MAXIMUM_READ_BUFFER_SIZE
 
             if self._lines_buffer_offset + read_size > self._file_object_size:
                 read_size = self._file_object_size - self._lines_buffer_offset
