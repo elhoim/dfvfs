@@ -21,7 +21,7 @@ To create a data slice from a file-like object.
 from dfvfs.helpers import data_slice
 
 ...
-slice_object = DataSlice(file_object)
+slice_object = data_slice.DataSlice(file_object)
 ```
 
 To use:
@@ -69,7 +69,7 @@ The source scanner scans for different types of elements:
 These elements are represented as source scan nodes.
 
 The source scanner uses the source scanner context to keep track of
-the nodea and user provided context information, such as:
+the nodes and user provided context information, such as:
 
 * which partition to default to;
 * which VSS stores to default to.
@@ -84,7 +84,46 @@ volumes that contain dfVFS supported volume and file systems. It is intended
 to help with programmatically handled various types of volume and file systems
 so the application that uses it can focus on reading file it is interested in.
 
-**TODO: add more information about VolumeScannerMediator and VolumeScannerOptions**
+The volume scanner is configured with volume scanner options
+(`VolumeScannerOptions`), that are passed to `GetBasePathSpecs`:
+
+| **Option** | **Description** |
+| --- | --- |
+| `credentials` | List of (credential type, credential data) tuples, used to unlock encrypted volumes, for example `("password", "secret")` |
+| `partitions` | Partition identifiers, for example `["p1"]` or `["all"]` |
+| `scan_mode` | `SCAN_MODE_ALL` (default) to scan volumes and snapshots, `SCAN_MODE_SNAPSHOTS_ONLY` to scan only the snapshots of a volume system with snapshots, or `SCAN_MODE_VOLUMES_ONLY` to not scan snapshots |
+| `snapshots` | Volume snapshot identifiers, for example `["vss1"]`, `["all"]` or `["none"]` |
+| `volumes` | Volume identifiers, for example those of an APFS or LVM volume system, such as `["apfs1"]` or `["all"]` |
+
+Identifiers can be specified with or without their prefix, for example `1` or
+`p1`.
+
+When the options do not determine which volumes to use, for example when
+multiple partitions are found and no partitions are specified, the volume
+scanner asks a volume scanner mediator (`VolumeScannerMediator`). An
+application that uses the volume scanner can subclass the mediator to prompt
+the user, by implementing:
+
+* `GetAPFSVolumeIdentifiers`, to select APFS volumes;
+* `GetLVMVolumeIdentifiers`, to select LVM volumes;
+* `GetPartitionIdentifiers`, to select partitions;
+* `GetVSSStoreIdentifiers`, to select Volume Shadow Snapshots (VSS);
+* `UnlockEncryptedVolume`, to unlock an encrypted volume, for example by
+  asking the user for a password.
+
+Without a mediator the volume scanner raises a `ScannerError` when it cannot
+determine how to proceed.
+
+```python
+from dfvfs.helpers import volume_scanner
+
+options = volume_scanner.VolumeScannerOptions()
+options.partitions = ["all"]
+options.snapshots = ["none"]
+
+scanner = volume_scanner.VolumeScanner()
+base_path_specs = scanner.GetBasePathSpecs(source_path, options=options)
+```
 
 Examples of how to use the volume scanner can be found in the [list file entries](https://github.com/open-source-dfir/dfvfs-snippets/blob/main/scripts/list_file_entries.py)
 and the [recursive hasher](https://github.com/open-source-dfir/dfvfs-snippets/blob/main/scripts/recursive_hasher.py)
@@ -103,9 +142,57 @@ The file system searcher was originally created for event extraction with
 [collection filters](https://plaso.readthedocs.io/en/latest/sources/user/Collection-Filters.html)
 in [Plaso](https://github.com/log2timeline/plaso/blob/993ab0111bbf594c9b6d679415c80f8409cad0b5/plaso/cli/storage_media_tool.py).
 
-**TODO: add more information about FindSpec**
+The file system searcher finds file entries in a file system that match
+one or more find specifications (`FindSpec`). A find specification can
+define:
 
-**TODO: add example**
+* the location to match, as a plain location (`location`), a glob
+  (`location_glob`) or a regular expression (`location_regex`), relative to
+  the root of the file system. Only one of these can be used per find
+  specification. A location can be provided as a string, which is split into
+  segments using `location_separator`, or as a list of path segments;
+* if the location should be matched case sensitive (`case_sensitive`);
+* the file entry types to match (`file_entry_types`), for example
+  `definitions.FILE_ENTRY_TYPE_FILE`;
+* if the file entry should be allocated (`is_allocated`).
+
+To find the files in `/Windows/System32/config`, case insensitive.
+
+```python
+from dfvfs.helpers import fake_file_system_builder
+from dfvfs.helpers import file_system_searcher
+from dfvfs.lib import definitions
+from dfvfs.path import factory as path_spec_factory
+
+file_system_builder = fake_file_system_builder.FakeFileSystemBuilder()
+file_system_builder.AddFile("/Windows/System32/config/SAM", b"data")
+file_system_builder.AddFile("/Windows/System32/config/SYSTEM", b"data")
+file_system_builder.AddFile("/Windows/System32/drivers/etc/hosts", b"data")
+
+mount_point = path_spec_factory.Factory.NewPathSpec(
+    definitions.TYPE_INDICATOR_FAKE, location="/"
+)
+searcher = file_system_searcher.FileSystemSearcher(
+    file_system_builder.file_system, mount_point
+)
+
+find_spec = file_system_searcher.FindSpec(
+    case_sensitive=False,
+    file_entry_types=[definitions.FILE_ENTRY_TYPE_FILE],
+    location_glob="/windows/system32/config/*",
+    location_separator="/",
+)
+
+for path_spec in searcher.Find(find_specs=[find_spec]):
+    print(searcher.GetRelativePath(path_spec))
+```
+
+This prints:
+
+```
+/Windows/System32/config/SAM
+/Windows/System32/config/SYSTEM
+```
 
 ## Windows path resolver helper
 
@@ -131,26 +218,47 @@ The Windows path resolver helper can be found in:
 dfvfs/helpers/windows_path_resolver.py
 ```
 
-**TODO: add example**
+To resolve a Windows path in a file system, for example a fake file system
+created with the fake file system builder.
+
+```python
+from dfvfs.helpers import windows_path_resolver
+
+path_resolver = windows_path_resolver.WindowsPathResolver(
+    file_system_builder.file_system, mount_point
+)
+path_resolver.SetEnvironmentVariable("SystemRoot", "C:\\Windows")
+
+path_spec = path_resolver.ResolvePath("%SystemRoot%\\system32\\drivers\\etc\\HOSTS")
+print(path_resolver.GetWindowsPath(path_spec))
+```
+
+This prints `C:\Windows\System32\drivers\etc\hosts`. Path segments are
+matched case insensitive and the resolved path specification uses the names
+as stored in the file system. `ResolvePath` returns None if the path cannot be
+resolved.
 
 ### Notes
 
-**TODO add more description here**
+The table below lists forms of Windows paths and if `ResolvePath` supports
+them. A drive letter of a volume 'absolute' path is not compared with the
+drive letter of the resolver. `..` path segments cannot traverse above the
+mount point.
 
-| **Description** | **Example** |
-| --- | --- |
-| Device path | `\\.\PhysicalDrive0` |
-| Volume device path | `\\.\C:` |
-| Volume file system path | `\\.\C:\` |
-| Volume path | `\DEVICE\HARDDISKVOLUME2` |
-| Extended-length path | `\\?\C:\directory\file.txt` |
-| Extended-length UNC path | `\\?\UNC\server\share\directory\file.txt` |
-| Local 'absolute' path | `\directory\file.txt` <br> `\directory\\file.txt` |
-| Local 'relative' path | `directory\file.txt` <br> `..\directory\file.txt` <br> `.\directory\file.txt` |
-| Volume 'absolute' path | `C:\directory\file.txt` |
-| Volume 'relative' path | `C:directory\file.txt` |
-| UNC path | `\\server\share\directory\file.txt` |
-| Path with environment variable | `%SystemRoot%\file.txt` |
-| Path with trailing number to indicate the corresponding TYPELIB resource inside the PE/COFF | `C:\WINDOWS\PCHealth\HelpCtr\Binaries\HelpCtr.exe\1` |
-| Path with volume creation time (FILETIME) and (volume) serial number (found in SuperFetch database and Prefetch files) | `\VOLUME{01d15f816d07b85e-5e6d77ca}\Windows\System32`
+| **Description** | **Example** | **Supported** |
+| --- | --- | --- |
+| Device path | `\\.\PhysicalDrive0` | No |
+| Volume device path | `\\.\C:` | No |
+| Volume file system path | `\\.\C:\` | Yes |
+| Volume path | `\DEVICE\HARDDISKVOLUME2` | No |
+| Extended-length path | `\\?\C:\directory\file.txt` | Yes |
+| Extended-length UNC path | `\\?\UNC\server\share\directory\file.txt` | No |
+| Local 'absolute' path | `\directory\file.txt` <br> `\directory\\file.txt` | Yes |
+| Local 'relative' path | `directory\file.txt` <br> `..\directory\file.txt` <br> `.\directory\file.txt` | No |
+| Volume 'absolute' path | `C:\directory\file.txt` | Yes |
+| Volume 'relative' path | `C:directory\file.txt` | No |
+| UNC path | `\\server\share\directory\file.txt` | No |
+| Path with environment variable | `%SystemRoot%\file.txt` | Yes, if the environment variable is set |
+| Path with trailing number to indicate the corresponding TYPELIB resource inside the PE/COFF | `C:\WINDOWS\PCHealth\HelpCtr\Binaries\HelpCtr.exe\1` | No |
+| Path with volume creation time (FILETIME) and (volume) serial number (found in SuperFetch database and Prefetch files) | `\VOLUME{01d15f816d07b85e-5e6d77ca}\Windows\System32` | No |
 
