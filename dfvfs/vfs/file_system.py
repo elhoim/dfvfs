@@ -191,11 +191,15 @@ class FileSystem:
         """Joins the path segments into a path.
 
         Args:
-          path_segments (list[str]): path segments.
+          path_segments (list[str]): path segments, where None and empty path
+              segments are ignored.
 
         Returns:
           str: joined path segments prefixed with the path separator.
         """
+        # Remove None and empty path segments.
+        path_segments = [segment for segment in path_segments if segment]
+
         # This is an optimized way to combine the path segments into a single path
         # and combine multiple successive path separators to one.
 
