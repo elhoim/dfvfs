@@ -5,12 +5,17 @@
 # AttributeError: 'module' object has no attribute 'GzipFile'
 # when using pip.
 
+import gzip
 import os
 import unittest
 
+from dfvfs.file_io import fake_file_io
 from dfvfs.lib import definitions
+from dfvfs.lib import errors
 from dfvfs.lib import gzipfile
 from dfvfs.path import factory as path_spec_factory
+from dfvfs.path import fake_path_spec
+from dfvfs.resolver import context
 from dfvfs.resolver import resolver
 
 from tests import test_lib as shared_test_lib
@@ -21,6 +26,21 @@ from tests import test_lib as shared_test_lib
 
 class GzipCompressedStreamTest(shared_test_lib.BaseTestCase):
     """Tests a gzip compressed stream file-like object."""
+
+    def _OpenFakeFileObject(self, resolver_context, file_data):
+        """Opens a fake file-like object.
+
+        Args:
+          resolver_context (Context): resolver context.
+          file_data (bytes): data of the fake file.
+
+        Returns:
+          FakeFile: fake file-like object.
+        """
+        path_spec = fake_path_spec.FakePathSpec(location="/test.gz")
+        file_object = fake_file_io.FakeFile(resolver_context, path_spec, file_data)
+        file_object.Open()
+        return file_object
 
     def testOpenClose(self):
         """Test the Open and Close functions."""
@@ -143,6 +163,49 @@ class GzipCompressedStreamTest(shared_test_lib.BaseTestCase):
 
         finally:
             test_file.close()
+
+    def testReadTrailingZeroPadding(self):
+        """Tests reading a file with trailing 0-byte padding after the last member."""
+        resolver_context = context.Context()
+
+        for padding_size in (1, 16, 1024):
+            file_data = b"".join(
+                [
+                    gzip.compress(b"hello"),
+                    gzip.compress(b" world"),
+                    b"\0" * padding_size,
+                ]
+            )
+            file_object = self._OpenFakeFileObject(resolver_context, file_data)
+
+            test_file = gzipfile.GzipCompressedStream()
+            test_file.Open(file_object)
+
+            try:
+                self.assertEqual(len(test_file.members), 2)
+                self.assertEqual(test_file.uncompressed_data_size, 11)
+                self.assertEqual(test_file.read(11), b"hello world")
+
+            finally:
+                test_file.close()
+                file_object.close()
+
+    def testReadTrailingData(self):
+        """Tests reading a file with trailing data that is not 0-byte padding."""
+        resolver_context = context.Context()
+
+        file_data = b"".join([gzip.compress(b"hello"), b"\0" * 16, b"garbage"])
+        file_object = self._OpenFakeFileObject(resolver_context, file_data)
+
+        test_file = gzipfile.GzipCompressedStream()
+
+        try:
+            with self.assertRaises(errors.FileFormatError):
+                test_file.Open(file_object)
+
+        finally:
+            test_file.close()
+            file_object.close()
 
     def testReadMultipleMembers(self):
         """Tests reading a file that contains multiple gzip members."""
