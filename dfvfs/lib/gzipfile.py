@@ -181,14 +181,15 @@ class GzipMember(data_format.DataFormat):
 
             file_offset = file_object.get_offset()
 
-        # Do not read the the last member footer if it is missing, which is
-        # a common corruption scenario.
-        if file_offset < file_size:
+        # Do not read the the last member footer if it is missing or truncated,
+        # which is a common corruption scenario.
+        if file_size - file_offset >= self._MEMBER_FOOTER.GetSizeHint():
             self._ReadStructureFromFileObject(
                 file_object, file_offset, self._MEMBER_FOOTER
             )
-
-        member_end_offset = file_object.get_offset()
+            member_end_offset = file_object.get_offset()
+        else:
+            member_end_offset = file_size
 
         # Initialize the member with data.
         self._file_object = file_object
