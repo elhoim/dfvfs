@@ -125,6 +125,25 @@ class OSFileEntryTest(shared_test_lib.BaseTestCase):
         # Not all operating systems provide a creation time.
         _ = file_entry.creation_time
 
+    @unittest.skipUnless(hasattr(os, "statx"), "missing os.statx()")
+    def testCreationTimeWithStatx(self):
+        """Test the creation_time property with os.statx()."""
+        file_entry = os_file_entry.OSFileEntry(
+            self._resolver_context, self._file_system, self._os_path_spec
+        )
+        self.assertIsNotNone(file_entry)
+
+        # pylint: disable=no-member
+        statx_result = os.statx(
+            self._os_path_spec.location, os.STATX_BTIME, follow_symlinks=False
+        )
+        if statx_result.stx_btime_ns is None:
+            self.skipTest("creation time not supported by file system")
+
+        creation_time = file_entry.creation_time
+        self.assertIsNotNone(creation_time)
+        self.assertEqual(creation_time.timestamp, statx_result.stx_btime_ns)
+
     def testModificationTime(self):
         """Test the modification_time property."""
         file_entry = os_file_entry.OSFileEntry(

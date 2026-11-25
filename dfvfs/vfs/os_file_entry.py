@@ -128,6 +128,31 @@ class OSFileEntry(file_entry.FileEntry):
 
         return self._attributes
 
+    def _GetCreationTimeWithStatx(self):
+        """Retrieves the creation time with os.statx().
+
+        os.statx() was introduced in Python 3.15 and is only available on Linux.
+
+        Returns:
+          dfdatetime.DateTimeValues: creation time or None if not available.
+        """
+        if not self._location or not hasattr(os, "statx"):
+            return None
+
+        try:
+            # pylint: disable=no-member
+            statx_result = os.statx(
+                self._location, os.STATX_BTIME, follow_symlinks=False
+            )
+        except OSError:
+            return None
+
+        timestamp = statx_result.stx_btime_ns
+        if timestamp is None:
+            return None
+
+        return dfdatetime_posix_time.PosixTimeInNanoseconds(timestamp=timestamp)
+
     def _GetDirectory(self):
         """Retrieves a directory.
 
@@ -239,7 +264,7 @@ class OSFileEntry(file_entry.FileEntry):
         else:
             timestamp = getattr(self._stat_info, "st_birthtime", None)
             if timestamp is None:
-                return None
+                return self._GetCreationTimeWithStatx()
 
         return dfdatetime_posix_time.PosixTime(timestamp=timestamp)
 
