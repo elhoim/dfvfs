@@ -8,6 +8,7 @@
 import gzip
 import os
 import unittest
+import zlib
 
 from dfvfs.file_io import fake_file_io
 from dfvfs.lib import definitions
@@ -201,6 +202,75 @@ class GzipCompressedStreamTest(shared_test_lib.BaseTestCase):
 
         try:
             with self.assertRaises(errors.FileFormatError):
+                test_file.Open(file_object)
+
+        finally:
+            test_file.close()
+            file_object.close()
+
+    def testReadTruncatedLastMember(self):
+        """Tests reading a file where the last member is truncated."""
+        resolver_context = context.Context()
+
+        uncompressed_data = b"".join(
+            [f"{index:08d} line of test data\n".encode() for index in range(2000)]
+        )
+        first_member = gzip.compress(b"hello")
+        last_member = gzip.compress(uncompressed_data)
+
+        test_cases = [
+            # Footer truncated to 1 - 7 bytes.
+            (size, uncompressed_data)
+            for size in range(len(last_member) - 7, len(last_member))
+        ]
+        # Footer missing.
+        test_cases.append((len(last_member) - 8, uncompressed_data))
+        # Compressed data truncated, only the data that can be decompressed is read.
+        decompressor = zlib.decompressobj(-zlib.MAX_WBITS)
+        truncated_size = len(last_member) // 2
+        test_cases.append(
+            (truncated_size, decompressor.decompress(last_member[10:truncated_size]))
+        )
+
+        for truncated_size, expected_data in test_cases:
+            file_data = b"".join([first_member, last_member[:truncated_size]])
+            file_object = self._OpenFakeFileObject(resolver_context, file_data)
+
+            test_file = gzipfile.GzipCompressedStream()
+            test_file.Open(file_object)
+
+            try:
+                self.assertEqual(len(test_file.members), 2)
+
+                expected_data = b"".join([b"hello", expected_data])
+                self.assertTrue(uncompressed_data.startswith(expected_data[5:]))
+                self.assertEqual(test_file.uncompressed_data_size, len(expected_data))
+                self.assertEqual(test_file.read(len(expected_data)), expected_data)
+
+                last_member_object = test_file.members[-1]
+                self.assertEqual(last_member_object.member_end_offset, len(file_data))
+
+            finally:
+                test_file.close()
+                file_object.close()
+
+    def testReadCorruptMember(self):
+        """Tests reading a file where a member has corrupt compressed data."""
+        resolver_context = context.Context()
+
+        uncompressed_data = b"".join(
+            [f"{index:08d} line of test data\n".encode() for index in range(2000)]
+        )
+        file_data = bytearray(gzip.compress(uncompressed_data))
+        # Corrupt the compressed data with an invalid block type.
+        file_data[10] |= 0x06
+
+        file_object = self._OpenFakeFileObject(resolver_context, bytes(file_data))
+
+        test_file = gzipfile.GzipCompressedStream()
+
+        try:
+            with self.assertRaises(errors.BackEndError):
                 test_file.Open(file_object)
 
         finally:
