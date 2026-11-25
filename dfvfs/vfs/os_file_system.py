@@ -114,11 +114,16 @@ class OSFileSystem(file_system.FileSystem):
         """Joins the path segments into a path.
 
         Args:
-          path_segments (list[str]): path segments.
+          path_segments (list[str]): path segments, where None and empty path
+              segments are ignored.
 
         Returns:
           str: joined path segments prefixed with the path separator.
         """
+        # Remove None and empty path segments. This also creates a copy of the
+        # path segments list, which is changed below.
+        path_segments = [segment for segment in path_segments if segment]
+
         # For paths on Windows we need to make sure to handle the first path
         # segment correctly.
         first_path_segment = None

@@ -62,6 +62,36 @@ class FileSystemTest(shared_test_lib.BaseTestCase):
         path = test_file_system.JoinPath(["/test1///test2", "test3"])
         self.assertEqual(path, expected_path)
 
+    def testJoinPathWithSpecialPathSegments(self):
+        """Test the join path functionality with special path segments."""
+        path_spec = fake_path_spec.FakePathSpec(location="/")
+
+        test_file_system = TestFileSystem(self._resolver_context, path_spec)
+
+        # None and empty path segments are ignored.
+        path = test_file_system.JoinPath([None, "test1", None, "test2", None])
+        self.assertEqual(path, "/test1/test2")
+
+        path = test_file_system.JoinPath(["", "test1", "", "test2", ""])
+        self.assertEqual(path, "/test1/test2")
+
+        path = test_file_system.JoinPath([None])
+        self.assertEqual(path, "/")
+
+        path = test_file_system.JoinPath([""])
+        self.assertEqual(path, "/")
+
+        path = test_file_system.JoinPath([])
+        self.assertEqual(path, "/")
+
+        # "." and ".." path segments are preserved since storage media and
+        # archive formats can contain them as literal names.
+        path = test_file_system.JoinPath([".", "test1", ".", "test2", "."])
+        self.assertEqual(path, "/./test1/./test2/.")
+
+        path = test_file_system.JoinPath(["..", "test1", "..", "test2", ".."])
+        self.assertEqual(path, "/../test1/../test2/..")
+
     # TODO: add tests for Open function.
 
     def testSplitPath(self):

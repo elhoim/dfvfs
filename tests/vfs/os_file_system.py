@@ -18,6 +18,11 @@ def TestPlatformSystem():
     return "Windows"
 
 
+def TestPlatformSystemLinux():
+    """Test function to emulate platform.system() == 'Linux'."""
+    return "Linux"
+
+
 class OSFileSystemTest(shared_test_lib.BaseTestCase):
     """Tests the operating system file system."""
 
@@ -189,6 +194,81 @@ class OSFileSystemTest(shared_test_lib.BaseTestCase):
         self.assertEqual(path, expected_path)
 
         platform.system = original_platform_system
+
+    def testJoinPathWithSpecialPathSegments(self):
+        """Test the join path functionality with special path segments."""
+        test_path = self._GetTestFilePath(["testdir_os"])
+        self._SkipIfPathNotExists(test_path)
+
+        test_os_path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_OS, location=test_path
+        )
+
+        file_system = os_file_system.OSFileSystem(
+            self._resolver_context, test_os_path_spec
+        )
+        setattr(file_system, "PATH_SEPARATOR", "/")
+
+        original_platform_system = platform.system
+        platform.system = TestPlatformSystemLinux
+
+        try:
+            path = file_system.JoinPath([None, "test1", None, "test2", None])
+            self.assertEqual(path, "/test1/test2")
+
+            path = file_system.JoinPath(["", "test1", "", "test2", ""])
+            self.assertEqual(path, "/test1/test2")
+
+            path = file_system.JoinPath([None])
+            self.assertEqual(path, "/")
+
+            path = file_system.JoinPath([])
+            self.assertEqual(path, "/")
+
+            path = file_system.JoinPath([".", "test1", "..", "test2"])
+            self.assertEqual(path, "/./test1/../test2")
+
+        finally:
+            platform.system = original_platform_system
+
+    def testJoinPathWithSpecialPathSegmentsWindows(self):
+        """Test the join path functionality with special path segments on Windows."""
+        test_path = self._GetTestFilePath(["testdir_os"])
+        self._SkipIfPathNotExists(test_path)
+
+        test_os_path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_OS, location=test_path
+        )
+
+        file_system = os_file_system.OSFileSystem(
+            self._resolver_context, test_os_path_spec
+        )
+        setattr(file_system, "PATH_SEPARATOR", "\\")
+
+        # In this test we emulate we are running on Windows.
+        original_platform_system = platform.system
+        platform.system = TestPlatformSystem
+
+        try:
+            path = file_system.JoinPath([None, "C:", None, "test1", None])
+            self.assertEqual(path, "C:\\test1")
+
+            path = file_system.JoinPath(["", "C:", "", "test1", ""])
+            self.assertEqual(path, "C:\\test1")
+
+            path = file_system.JoinPath([None])
+            self.assertEqual(path, "\\")
+
+            path = file_system.JoinPath(["C:", ".", "test1", ".."])
+            self.assertEqual(path, "C:\\.\\test1\\..")
+
+            path_segments = ["C:\\test1", "test2"]
+            path = file_system.JoinPath(path_segments)
+            self.assertEqual(path, "C:\\test1\\test2")
+            self.assertEqual(path_segments, ["C:\\test1", "test2"])
+
+        finally:
+            platform.system = original_platform_system
 
 
 if __name__ == "__main__":
