@@ -33,6 +33,22 @@ def CSPathSpecGetVolumeIndex(path_spec):
     return volume_index
 
 
+def CSOpenVolume(fvde_volume, path_spec, file_object, key_chain):
+    """Opens the Core Storage volume using the path specification.
+
+    Args:
+      fvde_volume (pyfvde.volume): Core Storage volume.
+      path_spec (PathSpec): path specification.
+      file_object (FileIO): file-like object.
+      key_chain (KeyChain): key chain.
+    """
+    encrypted_root_plist = key_chain.GetCredential(path_spec, "encrypted_root_plist")
+    if encrypted_root_plist:
+        fvde_volume.read_encrypted_root_plist(encrypted_root_plist)
+
+    fvde_volume.open_file_object(file_object)
+
+
 def CSUnlockLogicalVolume(fvde_logical_volume, path_spec, key_chain):
     """Unlocks a Core Storage logical volume using the path specification.
 

@@ -62,14 +62,9 @@ class CSFileSystem(file_system.FileSystem):
         )
 
         fvde_volume = pyfvde.volume()
-
-        encrypted_root_plist = resolver.Resolver.key_chain.GetCredential(
-            self._path_spec, "encrypted_root_plist"
+        cs_helper.CSOpenVolume(
+            fvde_volume, self._path_spec, file_object, resolver.Resolver.key_chain
         )
-        if encrypted_root_plist:
-            fvde_volume.read_encrypted_root_plist(encrypted_root_plist)
-
-        fvde_volume.open_file_object(file_object)
         # TODO: implement multi physical volume support.
         fvde_volume.open_physical_volume_files_as_file_objects([file_object])
         fvde_volume_group = fvde_volume.get_volume_group()
