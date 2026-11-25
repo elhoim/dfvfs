@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests for the bzip2 decompressor object."""
 
+import bz2
 import unittest
 
 from dfvfs.compression import bzip2_decompressor
@@ -34,6 +35,47 @@ class BZIP2DecompressorTestCase(test_lib.DecompressorTestCase):
 
         with self.assertRaises(errors.BackEndError):
             decompressor.Decompress(b"This is a test.")
+
+    def testDecompressMultipleStreams(self):
+        """Tests the Decompress method with multiple streams."""
+        compressed_data = b"".join(
+            [bz2.compress(b"This is a test."), bz2.compress(b" And another one.")]
+        )
+        expected_uncompressed_data = b"This is a test. And another one."
+
+        decompressor = bzip2_decompressor.BZIP2Decompressor()
+
+        uncompressed_data, remaining_compressed_data = decompressor.Decompress(
+            compressed_data
+        )
+        self.assertEqual(uncompressed_data, expected_uncompressed_data)
+        self.assertEqual(remaining_compressed_data, b"")
+
+        # Test with the compressed data split at every offset.
+        for split_offset in range(1, len(compressed_data)):
+            decompressor = bzip2_decompressor.BZIP2Decompressor()
+
+            uncompressed_data, remaining_compressed_data = decompressor.Decompress(
+                compressed_data[:split_offset]
+            )
+            remaining_compressed_data = b"".join(
+                [remaining_compressed_data, compressed_data[split_offset:]]
+            )
+            uncompressed_data_part, remaining_compressed_data = decompressor.Decompress(
+                remaining_compressed_data
+            )
+            uncompressed_data = b"".join([uncompressed_data, uncompressed_data_part])
+            self.assertEqual(uncompressed_data, expected_uncompressed_data)
+            self.assertEqual(remaining_compressed_data, b"")
+
+        # Test with trailing data that is not a stream.
+        decompressor = bzip2_decompressor.BZIP2Decompressor()
+
+        uncompressed_data, remaining_compressed_data = decompressor.Decompress(
+            b"".join([compressed_data, b"trailing"])
+        )
+        self.assertEqual(uncompressed_data, expected_uncompressed_data)
+        self.assertEqual(remaining_compressed_data, b"trailing")
 
 
 if __name__ == "__main__":

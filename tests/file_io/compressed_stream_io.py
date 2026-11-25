@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Tests for the compressed stream file-like object."""
 
+import bz2
 import os
 import unittest
 
 from dfvfs.file_io import compressed_stream_io
+from dfvfs.file_io import fake_file_io
 from dfvfs.lib import definitions
 from dfvfs.path import factory as path_spec_factory
+from dfvfs.path import fake_path_spec
 from dfvfs.resolver import context
 
 from tests.file_io import test_lib
@@ -87,6 +90,64 @@ class BZIP2CompressedStreamTest(test_lib.SyslogTestCase):
         file_object.Open()
 
         self._TestReadFileObject(file_object)
+
+
+class BZIP2MultiStreamCompressedStreamTest(test_lib.SyslogTestCase):
+    """The unit test for a BZIP2 compressed stream with multiple streams."""
+
+    def setUp(self):
+        """Sets up the needed objects used throughout the test."""
+        self._resolver_context = context.Context()
+        test_path = self._GetTestFilePath(["syslog"])
+        self._SkipIfPathNotExists(test_path)
+
+        with open(test_path, "rb") as file_object:
+            self._uncompressed_data = file_object.read()
+
+        # Compress the data as multiple streams, similar to pbzip2.
+        compressed_data = b"".join(
+            [
+                bz2.compress(self._uncompressed_data[:600]),
+                bz2.compress(self._uncompressed_data[600:]),
+            ]
+        )
+
+        test_fake_path_spec = fake_path_spec.FakePathSpec(location="/syslog.bz2")
+        self._fake_file_object = fake_file_io.FakeFile(
+            self._resolver_context, test_fake_path_spec, compressed_data
+        )
+        self._fake_file_object.Open()
+        self._resolver_context.CacheFileObject(
+            test_fake_path_spec, self._fake_file_object
+        )
+
+        self._compressed_stream_path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_COMPRESSED_STREAM,
+            compression_method=definitions.COMPRESSION_METHOD_BZIP2,
+            parent=test_fake_path_spec,
+        )
+
+    def tearDown(self):
+        """Cleans up the needed objects used throughout the test."""
+        self._fake_file_object.close()
+        self._resolver_context.Empty()
+
+    def testRead(self):
+        """Test the read functionality."""
+        file_object = compressed_stream_io.CompressedStream(
+            self._resolver_context, self._compressed_stream_path_spec
+        )
+        file_object.Open()
+
+        try:
+            self._TestGetSizeFileObject(file_object)
+            self._TestReadFileObject(file_object)
+
+            file_object.seek(0, os.SEEK_SET)
+            self.assertEqual(file_object.read(), self._uncompressed_data)
+
+        finally:
+            file_object.close()
 
 
 class LZMACompressedStreamTest(test_lib.SyslogTestCase):
