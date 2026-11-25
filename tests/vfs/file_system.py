@@ -3,7 +3,8 @@
 
 import unittest
 
-from dfvfs.path import fake_path_spec
+from dfvfs.lib import definitions
+from dfvfs.path import factory as path_spec_factory
 from dfvfs.resolver import context
 from dfvfs.vfs import file_system
 
@@ -27,7 +28,9 @@ class FileSystemTest(shared_test_lib.BaseTestCase):
 
     def testInitialize(self):
         """Test the __init__ function."""
-        path_spec = fake_path_spec.FakePathSpec(location="/")
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location="/"
+        )
 
         with self.assertRaises(ValueError):
             file_system.FileSystem(self._resolver_context, path_spec)
@@ -44,7 +47,9 @@ class FileSystemTest(shared_test_lib.BaseTestCase):
 
     def testJoinPath(self):
         """Test the join path functionality."""
-        path_spec = fake_path_spec.FakePathSpec(location="/")
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location="/"
+        )
 
         test_file_system = TestFileSystem(self._resolver_context, path_spec)
 
@@ -66,7 +71,9 @@ class FileSystemTest(shared_test_lib.BaseTestCase):
 
     def testSplitPath(self):
         """Test the split path functionality."""
-        path_spec = fake_path_spec.FakePathSpec(location="/")
+        path_spec = path_spec_factory.Factory.NewPathSpec(
+            definitions.TYPE_INDICATOR_FAKE, location="/"
+        )
 
         test_file_system = TestFileSystem(self._resolver_context, path_spec)
 
